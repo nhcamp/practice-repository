@@ -96,26 +96,54 @@ the guest user's ID is always 0. Include in your output the name of the
 facility, the name of the member formatted as a single column, and the cost.
 Order by descending cost, and do not use any subqueries. */
 
-SELECT CONCAT( m.firstname,  ' ', m.surname ) , b.facid, name
+SELECT CONCAT( m.firstname,  ' ', m.surname ) , b.facid, name, (
+
+CASE WHEN b.memid !=0
+THEN (
+membercost * slots
+)
+ELSE (
+guestcost * slots
+)
+END
+) AS cost
 FROM Bookings AS b
 LEFT JOIN Facilities AS f ON b.facid = f.facid
 JOIN Members AS m ON b.memid = m.memid
 WHERE starttime LIKE  '2012-09-04%'
-AND b.memid =0
 AND (
-guestcost * slots
-) >30
-OR b.memid >0
-AND (
-membercost * slots
-) >30
-
-With this problem I couldn't figure out how to get one column, cost, with the
-cost to user.
+b.memid !=0
+AND membercost * slots >30
+OR b.memid =0
+AND guestcost * slots >30
+)
+ORDER BY  `cost` DESC
 
 /* Q9: This time, produce the same result as in Q8, but using a subquery. */
 
+SELECT sub.name,sub.facility,sub.cost			
+		FROM (SELECT CONCAT( m.firstname,  ' ', m.surname ) AS name, b.facid, name AS facility, (CASE WHEN b.memid = 0 THEN (guestcost*slots) ELSE (membercost*slots) END) AS cost
+		FROM Bookings AS b
+		LEFT JOIN Facilities AS f ON b.facid = f.facid	
+		JOIN Members AS m ON b.memid = m.memid WHERE starttime LIKE '2012-09-04%') sub
+WHERE cost>30
+ORDER BY 'cost' DESC
 
 /* Q10: Produce a list of facilities with a total revenue less than 1000.
 The output of facility name and total revenue, sorted by revenue. Remember
 that there's a different cost for guests and members! */
+
+SELECT sub.name, sub.revenue
+FROM (
+
+SELECT b.facid, f.name, SUM( 
+CASE WHEN memid =0
+THEN f.guestcost * slots
+ELSE f.membercost * slots
+END ) AS revenue
+FROM Bookings AS b
+LEFT JOIN Facilities AS f ON b.facid = f.facid
+GROUP BY facid
+ORDER BY revenue DESC
+)sub
+WHERE revenue <1000
